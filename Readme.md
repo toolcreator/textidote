@@ -93,7 +93,7 @@ file `report.html` (using the *File/Open* menu). You should see something like t
 ![Screenshot](https://raw.githubusercontent.com/sylvainhalle/textidote/master/docs/assets/images/Screenshot.png)
 
 As you can see, the page shows your original LaTeX source file, where some
-portions have been highlighted in various colors. These correpond to regions
+portions have been highlighted in various colors. These correspond to regions
 in the file where an issue was found. You can hover your mouse over these
 colored regions; a tooltip will show a message that describes the problem.
 
@@ -145,10 +145,15 @@ example.tex(L38C1-L38C29): A section title should not end with a punctuation sym
 example.tex(L15C94-L15C99): Add a space before citation or reference. "things, like a citation\cite{my:paper} .The text"
 ```
 
-Each line corresponds to a warning, and is parseable by regular expressions easily, e.g., for further processing in another tool.
-The file is given at the beginning of the line, followed by the position in parentheses.
-Then, the warning message is given, and the excerpt causing the warning is printed in double quotes ("").
-Note, that sometimes it may happen that a position cannot be determined. In this case, instead of LxxCyy, ? is printed.
+Each line corresponds to a warning, and is parseable by regular expressions
+easily, e.g., for further processing in another tool. The file is given at the
+beginning of the line, followed by the position in parentheses. Then, the
+warning message is given, and the excerpt causing the warning is printed in
+double quotes (""). Note, that sometimes it may happen that a position cannot
+be determined. In this case, instead of LxxCyy, ? is printed.
+
+You can disable the use of color in any form of command-line output using the
+`--no-color` switch.
 
 ### Spelling, grammar and style
 
@@ -166,6 +171,11 @@ retrieves the messages it generates, and coverts the line and column numbers
 associated to each message back into line/column numbers of the original
 source file. For more information about the kind of verifications made by
 Language Tool, please refer to [its website](https://languagetool.org).
+
+Additionally, the `--firstlang lang` option can be used to make Language Tool check for false friends in your first language.
+For example, to check a text in english, when your first language is german, you may run:
+
+    java -jar textidote.jar --check en --firstlang de example.tex
 
 The language codes you can use are:
 
@@ -280,8 +290,8 @@ document. You can get this mapping by using the `--map` option:
     java -jar textidote.jar --clean --map map.txt example.tex > clean.txt
 
 The `--map` parameter is given the name of a file. TeXtidote will put in this
-file the list correspondences between character ranges. This file is made of
-lines that look like this:
+file the list of correspondences between character ranges. This file is made
+of lines that look like this:
 
 ```
 L1C1-L1C24=L1C5-L128
@@ -298,6 +308,12 @@ when the "cleaner" inserts new characters, or replaces characters from the
 original file by something else). Conversely, it is also possible that
 characters in the original file do not correspond to anything in the clean
 file (this happens when the cleaner deletes characters from the original).
+
+### Character encodings
+
+TeXtidote uses the OS default encoding when reading files (e.g. `utf-8` in Linux, `cp1252` in Windows). You can override this setting using the `--encoding` command line option:
+
+    java -jar textidote.jar --encoding cp1252 example.tex
 
 ### Using a configuration file
 
@@ -337,7 +353,7 @@ Simply call TeXtidote with a Markdown input file instead of a LaTeX file. The fo
 It order to get the best results when using TeXtidote, it is advisable that
 you follow a few formatting conventions when writing your LaTeX file:
 
-- Avoid putting multiple `\begin{envionment}` and/or `\end{environment}` on
+- Avoid putting multiple `\begin{environment}` and/or `\end{environment}` on
   the same line
 - Keep the arguments of a command on a single line. Commands (such as
   `\title{}`) that have their opening and closing braces on different lines
@@ -345,7 +361,7 @@ you follow a few formatting conventions when writing your LaTeX file:
   nonsensical warnings.
 - Do not hard-wrap your paragraphs. It is easier for TeXtidote to detect
   paragraphs if they have no hard carriage returns inside. (If you need word
-  wrapping, it is preferrable to enable it in your text editor.)
+  wrapping, it is preferable to enable it in your text editor.)
 - Put headings like `\section` or `\paragraph` alone on their line and
   separate them from the text below by a blank line.
 
@@ -391,7 +407,7 @@ Make this file executable by typing at the command line:
 
     sudo chmod +x /usr/local/bin/textidote
 
-(These two operations also require root previliges.) From then on, you can
+(These two operations also require root privileges.) From then on, you can
 invoke TeXtidote on the command line from any folder by simply typing
 `textidote`, e.g.:
 
@@ -455,6 +471,10 @@ Users of [Zsh](https://zsh.org) can also enable auto-completion; in your
 (Create the file if it does not exist.) You must then restart your Zsh shell
 for the changes to take effect.
 
+### Visual Studio Code integration
+
+Users of Visual Studio Code can integrate TeXtidote by calling it with the `--output singleline` and `--no-color` options and parse its results. Moreover, user [cphyc](https://github.com/cphyc) also wrote a nice [build task](https://github.com/sylvainhalle/textidote/issues/125#issue-603278987).
+
 ## Rules checked by TeXtidote
 
 Here is a list of the rules that are checked on your LaTeX file by TeXtidote.
@@ -508,7 +528,7 @@ If the `--check` option is used, you can add the `--languagemodel xx` option to 
 - There should not be a jump down between two non-successive section
   levels (e.g. a `\section` followed by a `\subsubsection` without a
   `\subsection` in between). [sh:secskip]
-- You should avoid stacked headings, i.e. consecutive headings wihtout
+- You should avoid stacked headings, i.e. consecutive headings without
   text in between. [sh:stacked]
 
 ### Hard-coding
@@ -572,7 +592,7 @@ TeXtidote can test itself by running:
     ant test
 
 Unit tests are run with [jUnit](http://junit.org); a detailed report of
-these tests in HTML format is availble in the folder `tests/junit`, which
+these tests in HTML format is available in the folder `tests/junit`, which
 is automatically created. Code coverage is also computed with
 [JaCoCo](http://www.eclemma.org/jacoco/); a detailed report is available
 in the folder `tests/coverage`.

@@ -17,6 +17,7 @@
  */
 package ca.uqac.lif.textidote;
 
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
@@ -147,9 +148,10 @@ public class Main
 		// Store input type
 		Linter.Language input_type = Linter.Language.UNSPECIFIED;
 
-		// Setup command line parser and arguents
+		// Setup command line parser and arguments
 		CliParser cli_parser = new CliParser();
 		cli_parser.addArgument(new Argument().withLongName("check").withArgument("lang").withDescription("Checks grammar in language lang"));
+		cli_parser.addArgument(new Argument().withLongName("firstlang").withArgument("lang").withDescription("Checks for false friends with the author's first language lang and the language specified in --check"));
 		cli_parser.addArgument(new Argument().withLongName("clean").withDescription("Remove markup from input file"));
 		cli_parser.addArgument(new Argument().withLongName("dict").withArgument("file").withDescription("Load dictionary from file"));
 		cli_parser.addArgument(new Argument().withLongName("help").withDescription("\tShow command line usage"));
@@ -168,6 +170,7 @@ public class Main
 		cli_parser.addArgument(new Argument().withLongName("version").withDescription("Show version number"));
 		cli_parser.addArgument(new Argument().withLongName("output").withArgument("method").withDescription("Output as plain (default), json, html, or singleline"));
 		cli_parser.addArgument(new Argument().withLongName("ci").withDescription("Ignores the return code for CI usage"));
+		cli_parser.addArgument(new Argument().withLongName("encoding").withArgument("x").withDescription("Read files using encoding x"));
 
 		// Check if we are using textidote in a CI tool
 		boolean usingCI = false;
@@ -314,6 +317,26 @@ public class Main
 				input_type = Linter.Language.TEXT;
 			}
 		}
+		String encoding = "utf-8";
+		if (map.hasOption("encoding"))
+		{
+			encoding = map.getOptionValue("encoding");
+			// Try to create a scanner with specified encoding
+			Scanner temp_scanner = null;
+			try
+			{
+				temp_scanner = new Scanner(new ByteArrayInputStream("foo".getBytes()), encoding);
+			}
+			catch (IllegalArgumentException e)
+			{
+				stderr.println("Invalid encoding: " + encoding);
+				return 9;
+			}
+			if (temp_scanner != null)
+			{
+				temp_scanner.close();
+			}
+		}
 
 		// Only detex input
 		if (map.hasOption("clean"))
@@ -329,7 +352,7 @@ public class Main
 				}
 				else
 				{
-					Scanner scanner = new Scanner(f);
+					Scanner scanner = new Scanner(f, encoding);
 					cleaner.add(ReplacementCleaner.create(scanner));
 					stderr.println("Using replacement file " + replacement_filename);
 				}
@@ -348,7 +371,7 @@ public class Main
 					if (filename.compareTo("--") == 0)
 					{
 						// Open scanner on stdin
-						scanner = new Scanner(in);
+						scanner = new Scanner(in, encoding);
 					}
 					else
 					{
@@ -359,7 +382,7 @@ public class Main
 						}
 						else
 						{
-							scanner = new Scanner(f);
+							scanner = new Scanner(f, encoding);
 						}
 					}
 					// Create cleaner based on file extension
@@ -434,6 +457,7 @@ public class Main
 		// Do we check the language?
 		List<String> dictionary = new ArrayList<String>();
 		String lang_s = "";
+		String firstlang_s = "";
 		if (map.hasOption("check"))
 		{
 			lang_s = map.getOptionValue("check");
@@ -441,20 +465,34 @@ public class Main
 			try
 			{
 				String dict_filename = ASPELL_DICT_FILENAME.replace("XX", lang_s);
-				if (dictionary.addAll(readDictionary(dict_filename)))
+				Set<String> dict = readDictionary(dict_filename);
+				if (dictionary.addAll(dict))
 				{
 					stderr.println("Found local Aspell dictionary in " + dict_filename);
+				}
+				if (dict.isEmpty())
+				{
+					stderr.println("Warning: nothing read from local dictionary. Is the file written with the proper encoding?");
 				}
 			}
 			catch (FileNotFoundException e)
 			{
 				// Do nothing
 			}
+			if (map.hasOption("firstlang"))
+			{
+				firstlang_s = map.getOptionValue("firstlang");
+			}
 			if (map.hasOption("dict"))
 			{
 				try
 				{
-					dictionary.addAll(readDictionary(map.getOptionValue("dict")));
+					Set<String> dict = readDictionary(map.getOptionValue("dict"));
+					dictionary.addAll(dict);
+					if (dict.isEmpty())
+					{
+						stderr.println("Warning: nothing read from dictionary file. Is the file written with the proper encoding?");
+					}
 				}
 				catch (FileNotFoundException e)
 				{
@@ -495,13 +533,13 @@ public class Main
 				renderer = new JsonAdviceRenderer(stdout, lang_s);
 			}
 		}
-		if (map.hasOption("ci"))
-		{
-			usingCI = true;
-		}
 		else
 		{
 			renderer = new AnsiAdviceRenderer(stdout);
+		}
+		if (map.hasOption("ci"))
+		{
+			usingCI = true;
 		}
 
 		// Process files
@@ -596,7 +634,7 @@ public class Main
 				{
 					try
 					{
-						CheckLanguage cl = new CheckLanguage(LanguageFactory.getLanguageFromString(lang_s), dictionary);
+						CheckLanguage cl = new CheckLanguage(LanguageFactory.getLanguageFromString(lang_s), LanguageFactory.getLanguageFromString(firstlang_s), dictionary);
 						if (f_ngram_dir != null)
 						{
 							cl.activateLanguageModelRules(f_ngram_dir);

@@ -71,11 +71,13 @@ public class CheckLanguage extends Rule
 	 * Creates a new rule for checking a specific language
 	 * @param lang The language to check. If {@code null}, the
 	 * constructor will throw an exception
+	 * @param first_lang The first language of the author.
+	 * Used by LanguageTool to check for false friends.
 	 * @param dictionary A set of words that should be ignored by
 	 * spell checking
 	 * @throws UnsupportedLanguageException If {@code lang} is null
 	 */
-	public CheckLanguage(/*@ nullable @*/ Language lang, /*@ non_null @*/ List<String> dictionary) throws UnsupportedLanguageException
+	public CheckLanguage(/*@ nullable @*/ Language lang, /*@ nullable @*/ Language first_lang, /*@ non_null @*/ List<String> dictionary) throws UnsupportedLanguageException
 	{
 		super("lt:");
 		if (lang == null)
@@ -83,19 +85,43 @@ public class CheckLanguage extends Rule
 			throw new UnsupportedLanguageException();
 		}
 		setName("lt:" + lang.getShortCode());
-		m_languageTool = new MultiThreadedJLanguageTool(lang);
+		if (first_lang == null)
+		{
+			m_languageTool = new MultiThreadedJLanguageTool(lang);
+		}
+		else
+		{
+			m_languageTool = new MultiThreadedJLanguageTool(lang, first_lang);
+		}
 		if (m_disableWhitespace)
 		{
 			m_languageTool.disableRule("WHITESPACE_RULE");
 		}
+		m_dictionary = dictionary;
+		handleUserDictionary();
+	}
+
+	public void handleUserDictionary() {
 		for (org.languagetool.rules.Rule rule : m_languageTool.getAllActiveRules())
 		{
 			if (rule instanceof SpellingCheckRule)
 			{
-				((SpellingCheckRule) rule).addIgnoreTokens(dictionary);
+				((SpellingCheckRule) rule).addIgnoreTokens(m_dictionary);
 			}
 		}
-		m_dictionary = dictionary;
+	}
+
+	/**
+	 * Creates a new rule for checking a specific language
+	 * @param lang The language to check. If {@code null}, the
+	 * constructor will throw an exception
+	 * @param dictionary A set of words that should be ignored by
+	 * spell checking
+	 * @throws UnsupportedLanguageException If {@code lang} is null
+	 */
+	public CheckLanguage(/*@ nullable @*/ Language lang, /*@ non_null @*/ List<String> dictionary) throws UnsupportedLanguageException
+	{
+		this(lang, null, dictionary);
 	}
 
 	/**
@@ -109,16 +135,16 @@ public class CheckLanguage extends Rule
 	}
 
 	@Override
-	public List<Advice> evaluate(AnnotatedString s, AnnotatedString original) 
+	public List<Advice> evaluate(AnnotatedString s, AnnotatedString original)
 	{
 		List<Advice> out_list = new ArrayList<Advice>();
 		String s_to_check = s.toString();
 		List<RuleMatch> matches = null;
-		try 
+		try
 		{
 			matches = m_languageTool.check(s_to_check);
 		}
-		catch (IOException e) 
+		catch (IOException e)
 		{
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -134,7 +160,7 @@ public class CheckLanguage extends Rule
 			Position start_pos = s.getPosition(rm.getFromPos());
 			if (!start_pos.equals(Position.NOWHERE))
 			{
-				start_src_pos = s.getSourcePosition(start_pos);				
+				start_src_pos = s.getSourcePosition(start_pos);
 			}
 			Position end_pos = s.getPosition(rm.getToPos());
 			if (!end_pos.equals(Position.NOWHERE))
@@ -208,7 +234,7 @@ public class CheckLanguage extends Rule
 					String word = line.substring(Math.min(line.length() - 1, r.getStart().getColumn()), end_p).trim();
 					if (word.contains("``"))
 					{
-						// This type of quote is OK in LaTeX: ignore 
+						// This type of quote is OK in LaTeX: ignore
 						continue;
 					}
 				}
@@ -229,7 +255,7 @@ public class CheckLanguage extends Rule
 		}
 		return out_list;
 	}
-	
+
 	/**
 	 * Activate rules that depend on a language model. The language model
 	 * currently consists of Lucene indexes with ngram occurrence counts.
@@ -244,6 +270,7 @@ public class CheckLanguage extends Rule
 		try
 		{
 			m_languageTool.activateLanguageModelRules(f_ngram_dir);
+			handleUserDictionary();
 		}
 		catch (IOException e)
 		{
@@ -276,7 +303,7 @@ public class CheckLanguage extends Rule
 		 * A description for the rule
 		 */
 		protected String m_description = "";
-		
+
 		public CheckLanguageSpecific(String id, String description)
 		{
 			super(CheckLanguage.this.getName() + ":" + id);
@@ -296,7 +323,7 @@ public class CheckLanguage extends Rule
 		}
 
 		@Override
-		public String getDescription() 
+		public String getDescription()
 		{
 			return m_description;
 		}
@@ -309,20 +336,20 @@ public class CheckLanguage extends Rule
 		 */
 		private static final long serialVersionUID = 1L;
 	}
-	
+
 	public static class IncorrectFolderStructureException extends Exception
 	{
 		/**
 		 * Dummy UID
 		 */
 		private static final long serialVersionUID = 1L;
-		
+
 		public IncorrectFolderStructureException(String message)
 		{
 			super(message);
 		}
 	}
-	
+
 	public static class FolderNotFoundException extends Exception
 	{
 		/**
@@ -332,7 +359,7 @@ public class CheckLanguage extends Rule
 	}
 
 	@Override
-	public String getDescription() 
+	public String getDescription()
 	{
 		return "LanguageTool";
 	}

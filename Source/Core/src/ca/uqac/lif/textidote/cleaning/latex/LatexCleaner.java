@@ -214,7 +214,7 @@ public class LatexCleaner extends TextCleaner
 	 */
 	protected boolean isEnvironmentStart(/*@ non_null @*/ String line)
 	{
-		if (line.matches(".*\\\\begin\\s*\\{\\s*(align|equation|table|tabular|verbatim|lstlisting|IEEEkeywords|figure|wrapfigure).*") || line.matches(".*\\\\\\[.*"))
+		if (line.matches(".*\\\\begin\\s*\\{\\s*(align|equation|table|tabular|verbatim|lstlisting|IEEEkeywords|figure|wrapfigure).*") || line.matches(".*\\\\\\[[^\\]]*"))
 		{
 			return true;
 		}
@@ -352,7 +352,7 @@ public class LatexCleaner extends TextCleaner
 		as_out = as_out.replaceAll("\\\\verb\\+[^\\+]*?\\+", "[0]");
 		as_out = as_out.replaceAll("\\\\verb\"[^\"]*?\"", "[0]");
 		// Replace references and URLs by dummy placeholder
-		as_out = as_out.replaceAll("\\\\(ref|url|eqref|cref|Cref)\\{.*?\\}", "X");
+		as_out = as_out.replaceAll("\\\\(ref|url|eqref|cref|Cref|vref|Vref|nameref|vpageref|pageref)\\{.*?\\}", "X");
 		// Titles
 		as_out = as_out.replaceAll("\\\\maketitle|\\\\newpage", "");
 		// Font commands
@@ -378,10 +378,13 @@ public class LatexCleaner extends TextCleaner
 		as_out = as_out.replaceAll("^\\$([^\\$]|\\.)*\\$", "X");
 		as_out = as_out.replaceAll("\\\\\\(.*?\\\\\\)", "X");*/
 		// Commands we can ignore
-		as_out = as_out.replaceAll("\\\\\\w+\\{", "");
-		//as_out = as_out.replaceAll("\\\\(title|textbf|textit|emph|uline|section|subsection|subsubsection|paragraph)", "");
+		as_out = as_out.replaceAll("\\\\(title|textbf|textit|emph|uline|texttt|textsc)", "");
+		as_out = as_out.replaceAll("\\\\\\w+\\*{0,1}\\{", "");
 		// Curly brackets
-		as_out = as_out.replaceAll("\\{|\\}", "");
+		for (int i = 0; i < 5; i++)
+		{
+			as_out = as_out.replaceAll("\\{|\\}", "");
+		}
 		return as_out;
 	}
 	
